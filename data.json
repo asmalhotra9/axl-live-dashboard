@@ -5,7 +5,7 @@
       "label": "Words Read (ALL)",
       "subtext": "July 2024 to now",
       "baselineDate": "2024-07-15T00:00:00+05:30",
-      "baselineValue": 100,
+      "baselineValue": 25050090,
       "hourlyRates": [60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 6000, 6000, 6000, 60, 60, 60, 60, 60, 600, 60]
     },
     {
@@ -13,7 +13,7 @@
       "label": "Problems Solved (AML)",
       "subtext": "July 2024 to now",
       "baselineDate": "2024-07-15T00:00:00+05:30",
-      "baselineValue": 100,
+      "baselineValue": 1120000,
       "hourlyRates": [60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60]
     }
   ]
