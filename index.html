@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AXL Live Impact Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@700&display=swap');
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Inter', sans-serif;
+      background-color: #10141C;
+      color: #F9FAFB;
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 2rem 3rem;
+      box-sizing: border-box;
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.5rem;
+      flex-shrink: 0;
+    }
+    .dashboard-title {
+      font-size: 3em;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin: 60;
+    }
+    .dashboard-logo {
+      height: 200px;
+      width: auto;
+    }
+    #timeline-container {
+            width: 100%; /* The Fix: Use 100% of the parent's width */
+            overflow-x: hidden; /* This is no longer needed, but can be kept */
+            height: 90px;
+            padding: 1rem 0; /* The Fix: Let the main container handle side padding */
+            box-sizing: border-box;
+        }
+    .timeline-bar { fill: #1F2937; }
+    .timeline-tick { stroke: #4B5563; stroke-width: 1; }
+    .tick-label {
+      fill: #9CA3AF;
+      font-size: 1em;
+      font-family: 'Roboto Mono', monospace;
+    }
+    .time-indicator {
+      fill: #34D399;
+      stroke: #FFFFFF;
+      stroke-width: 2px;
+      r: 10;
+    }
+    #dashboard-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 3rem 6rem;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-items: center;
+      border-top: 1px solid #374151;
+      padding-top: 2rem;
+    }
+    .counter-block {
+      text-align: center;
+    }
+    .label {
+      font-size: 1.5em;
+      font-weight: 700;
+      color: #9CA3AF;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .value {
+        font-size: clamp(10rem, 12vw, 80rem); /* Significantly increased values */
+        font-weight: bold;
+        font-family: 'Roboto Mono', monospace;
+        color: #FFFFFF;
+        line-height: 1;
+        }
+    .value-glow {
+      text-shadow: 0 0 10px #34D399;
+    }
+    .subtext {
+      font-size: 1.1em;
+      color: #4B5563;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="dashboard-header">
+      <h1 class="dashboard-title">Live Impact Dashboard</h1>
+      <img src="logo.png" alt="AXL Logo" class="dashboard-logo">
+    </header>
+    <div id="timeline-container"></div>
+    <main id="dashboard-container"></main>
+  </div>
+  <script>
+    const dataUrl = 'data.json';
+    const format = d3.format(",");
+    
+    function initializeTimeline() {
+        const container = d3.select("#timeline-container");
+        const bounds = container.node().getBoundingClientRect();
+        
+        const margin = { top: 10, right: 40, bottom: 30, left: 40 }; // 🔧 ADD LEFT/RIGHT
+        const width = bounds.width - margin.left - margin.right;
+        const height = bounds.height - margin.top - margin.bottom;
+
+        const svg = container.append("svg")
+            .attr("width", bounds.width)
+            .attr("height", bounds.height)
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        const xScale = d3.scaleLinear().domain([0, 24]).range([0, width]);
+
+        svg.append("rect")
+            .attr("class", "timeline-bar")
+            .attr("x", 0)
+            .attr("y", height / 2 - 2)
+            .attr("width", width)
+            .attr("height", 4)
+            .attr("rx", 2);
+
+        svg.selectAll(".timeline-tick")
+            .data(d3.range(25))
+            .join("line")
+            .attr("class", "timeline-tick")
+            .attr("x1", d => xScale(d))
+            .attr("x2", d => xScale(d))
+            .attr("y1", height / 2 - 8)
+            .attr("y2", height / 2 + 8);
+
+        svg.selectAll(".tick-label")
+            .data([0, 6, 12, 18, 24])
+            .join("text")
+            .attr("class", "tick-label")
+            .attr("x", d => xScale(d))
+            .attr("y", height / 2 + 24)
+            .attr("text-anchor", "middle")
+            .text(d => d + "h IST");
+
+        svg.append("circle")
+            .attr("id", "time-indicator")
+            .attr("class", "time-indicator")
+            .attr("cy", height / 2)
+            .attr("r", 10);
+        }
+
+
+    function updateTimeline() {
+      const now = new Date();
+      const istOffset = now.getTimezoneOffset() * 60000 + (5.5 * 60 * 60 * 1000);
+      const istTime = new Date(now.getTime() + istOffset);
+      const seconds = istTime.getHours() * 3600 + istTime.getMinutes() * 60 + istTime.getSeconds();
+      const progress = (seconds / 86400) * 100;
+      const svg = d3.select("#timeline-container svg");
+      const width = svg.attr("width") - 20;
+      const xScale = d3.scaleLinear().domain([0, 100]).range([0, width]);
+      svg.select("#time-indicator")
+        .transition()
+        .duration(1000)
+        .ease(d3.easeLinear)
+        .attr("cx", xScale(progress));
+    }
+
+    function calculateCurrentValue(metric) {
+      const now = new Date();
+      const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const todayMidnightIST = new Date(nowIST);
+      todayMidnightIST.setHours(0, 0, 0, 0);
+      const elapsedMsToday = nowIST.getTime() - todayMidnightIST.getTime();
+      const hoursElapsed = Math.floor(elapsedMsToday / (3600 * 1000));
+      const remainderMs = elapsedMsToday % (3600 * 1000);
+      let valueFromFullHours = 0;
+      for (let i = 0; i < hoursElapsed; i++) {
+        valueFromFullHours += metric.hourlyRates[i] || 0;
+      }
+      const currentRate = metric.hourlyRates[hoursElapsed] || 0;
+      const partialValue = (remainderMs / (3600 * 1000)) * currentRate;
+      return metric.baselineValue + valueFromFullHours + partialValue;
+    }
+
+    async function initializeDashboard() {
+      initializeTimeline();
+      try {
+        const data = await d3.json(dataUrl);
+        const container = d3.select("#dashboard-container");
+        container.selectAll(".counter-block")
+          .data(data.metrics)
+          .enter()
+          .append("div")
+          .attr("class", "counter-block")
+          .html(d => `
+            <div class="label">${d.label}</div>
+            <div class="value" id="${d.id}">0</div>
+            <div class="subtext">${d.subtext}</div>
+          `);
+        function updateValues() {
+          data.metrics.forEach(metric => {
+            const newValue = calculateCurrentValue(metric);
+            const valueEl = d3.select(`#${metric.id}`);
+            const currentValue = parseFloat(valueEl.text().replace(/,/g, '')) || metric.baselineValue;
+            valueEl.transition()
+              .duration(1000)
+              .ease(d3.easeLinear)
+              .tween("text", function () {
+                const i = d3.interpolate(currentValue, newValue);
+                this.classList.add("value-glow");
+                return function (t) {
+                  this.textContent = format(Math.floor(i(t)));
+                };
+              })
+              .on("end", function () {
+                this.classList.remove("value-glow");
+              });
+          });
+          updateTimeline();
+        }
+        setInterval(updateValues, 1000);
+      } catch (err) {
+        console.error("Failed to load data:", err);
+        document.body.innerHTML = `<div style="color:red;text-align:center;padding:40px;font-size:24px;">Error loading data. Open console (F12) for details.</div>`;
+      }
+    }
+
+    initializeDashboard();
+  </script>
+</body>
+</html>
